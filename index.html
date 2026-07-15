@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>VCC 2026 — VVIP Consulting Conference</title>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      overflow-x: hidden;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    #progressBar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 2px; width: 0%;
+      background: linear-gradient(90deg, #7B2FFF, #3B82F6, #F5C842);
+      z-index: 999;
+      transition: width 0.04s linear;
+    }
+
+    /* 로딩 오버레이 */
+    #loadingOverlay {
+      position: fixed; inset: 0;
+      background: #000; z-index: 900;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+      transition: opacity 0.6s ease;
+    }
+    #loadingOverlay.hidden { opacity: 0; pointer-events: none; }
+
+    .loading-logo {
+      font-size: 13px; font-weight: 600;
+      letter-spacing: 0.3em;
+      color: rgba(255,255,255,0.6);
+      text-transform: uppercase;
+    }
+    .loading-bar-wrap {
+      width: 200px; height: 1px;
+      background: rgba(255,255,255,0.1); overflow: hidden;
+    }
+    .loading-bar-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #7B2FFF, #3B82F6, #F5C842);
+      transition: width 0.15s ease;
+    }
+    .loading-pct {
+      font-size: 11px; letter-spacing: 0.15em;
+      color: rgba(255,255,255,0.35);
+    }
+
+    :root { --cw: min(100vw, calc(100vh * 9 / 16)); }
+
+    #videoSection { position: relative; height: 600vh; }
+
+    #videoSticky {
+      position: sticky; top: 0;
+      width: 100%; height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: #000;
+    }
+
+    #videoWrap {
+      position: relative;
+      width: var(--cw); height: 100vh;
+      flex-shrink: 0; overflow: hidden;
+    }
+
+    #scrollVideo {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+      /* GPU 레이어 강제 */
+      transform: translateZ(0);
+      will-change: contents;
+      /* 부드러운 프레임 디코딩 힌트 */
+      -webkit-transform: translateZ(0);
+    }
+
+    /* 텍스트 */
+    .text-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none; z-index: 10;
+    }
+    .scene-text {
+      font-family: 'Pretendard', sans-serif;
+      font-size: clamp(18px, 4vw, 38px);
+      font-weight: 700; color: #141253;
+      letter-spacing: -0.01em; text-align: center;
+      opacity: 0; transform: translateY(14px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+      position: absolute; white-space: nowrap;
+      text-shadow: 0 0 40px rgba(255,255,255,0.7), 0 0 80px rgba(255,255,255,0.3);
+    }
+    .scene-text.visible { opacity: 1; transform: translateY(0); }
+    .scene-text.fadeout {
+      opacity: 0; transform: translateY(-12px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    #scrollHint {
+      position: absolute; bottom: 36px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      animation: hintBounce 2s ease-in-out infinite;
+      transition: opacity 0.4s; z-index: 20;
+    }
+    #scrollHint span {
+      font-size: 10px; letter-spacing: 0.25em;
+      color: rgba(255,255,255,0.5); text-transform: uppercase;
+    }
+    .hint-line {
+      width: 1px; height: 36px;
+      background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.45));
+    }
+    @keyframes hintBounce {
+      0%,100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(8px); }
+    }
+
+    /* 상세페이지 */
+    #detailSection {
+      width: 100%; background: #000;
+      display: flex; justify-content: center;
+    }
+    #detailSection img {
+      width: var(--cw); height: auto; display: block;
+    }
+  </style>
+</head>
+<body>
+
+<div id="progressBar"></div>
+
+<div id="loadingOverlay">
+  <p class="loading-logo">VCC 2026</p>
+  <div class="loading-bar-wrap">
+    <div class="loading-bar-fill" id="loadFill"></div>
+  </div>
+  <p class="loading-pct" id="loadPct">0%</p>
+</div>
+
+<section id="videoSection">
+  <div id="videoSticky">
+    <div id="videoWrap">
+      <video id="scrollVideo" muted playsinline preload="auto" webkit-playsinline>
+        <source src="main.mp4" type="video/mp4">
+      </video>
+      <div class="text-overlay">
+        <span class="scene-text" id="text1">글로벌 AI 산업</span>
+        <span class="scene-text" id="text2">마케팅 트렌드 변화</span>
+        <span class="scene-text" id="text3">금융 시장 변화</span>
+      </div>
+      <div id="scrollHint"><span>Scroll</span><div class="hint-line"></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="detailSection">
+  <img src="detail.png" alt="VCC 상세페이지" loading="lazy">
+</section>
+
+<script>
+  const video   = document.getElementById('scrollVideo');
+  const section = document.getElementById('videoSection');
+  const bar     = document.getElementById('progressBar');
+  const hint    = document.getElementById('scrollHint');
+  const overlay = document.getElementById('loadingOverlay');
+  const fill    = document.getElementById('loadFill');
+  const pctEl   = document.getElementById('loadPct');
+  const text1   = document.getElementById('text1');
+  const text2   = document.getElementById('text2');
+  const text3   = document.getElementById('text3');
+
+  let ticking    = false;
+  let lastTime   = -1;
+  let isReady    = false;
+  let duration   = 0;
+  let videoEnded = false;
+
+  // ── 스크롤 잠금 (버퍼 충분히 찰 때까지) ──
+  let scrollLocked = true;
+  document.body.style.overflow = 'hidden';
+
+  const timings = [
+    { el: text1, inStart: 3.5, outStart: 4.1 },
+    { el: text2, inStart: 4.3, outStart: 4.9 },
+    { el: text3, inStart: 5.1, outStart: 5.7 },
+  ];
+
+  function updateTexts(t) {
+    timings.forEach(({ el, inStart, outStart }) => {
+      if (t >= inStart && t < outStart) {
+        el.classList.remove('fadeout'); el.classList.add('visible');
+      } else if (t >= outStart) {
+        el.classList.remove('visible'); el.classList.add('fadeout');
+      } else {
+        el.classList.remove('visible', 'fadeout');
+      }
+    });
+  }
+
+  // ── 버퍼 진행률 실시간 표시 ──
+  function updateBuffer() {
+    if (!video.duration) return;
+    let buffered = 0;
+    for (let i = 0; i < video.buffered.length; i++) {
+      if (video.buffered.start(i) <= 0.1) {
+        buffered = Math.max(buffered, video.buffered.end(i));
+      }
+    }
+    const pct = Math.min((buffered / video.duration) * 100, 100);
+    fill.style.width = pct + '%';
+    pctEl.textContent = Math.floor(pct) + '%';
+    return pct;
+  }
+
+  video.addEventListener('progress', () => {
+    const pct = updateBuffer();
+    // 30% 이상 버퍼되면 스크롤 해제 + 오버레이 제거
+    if (pct >= 30 && scrollLocked) {
+      scrollLocked = false;
+      document.body.style.overflow = '';
+      fill.style.width = '100%';
+      pctEl.textContent = '100%';
+      setTimeout(() => overlay.classList.add('hidden'), 300);
+      if (!isReady) onReady();
+    }
+  });
+
+  function onReady() {
+    if (isReady) return;
+    isReady  = true;
+    duration = video.duration;
+
+    // 스크롤 잠금 해제 (progress 이벤트가 늦을 경우 대비)
+    if (scrollLocked) {
+      scrollLocked = false;
+      document.body.style.overflow = '';
+      setTimeout(() => overlay.classList.add('hidden'), 300);
+    }
+    scrub();
+  }
+
+  video.addEventListener('canplaythrough', onReady);
+  video.addEventListener('loadedmetadata', () => {
+    duration = video.duration;
+    if (video.readyState >= 4) onReady();
+  });
+  if (video.readyState >= 4) onReady();
+
+  // ── 스크러빙 — 임계값 높여 GitHub 네트워크 레이턴시 대응 ──
+  const SEEK_THRESHOLD = 0.05; // 50ms 이상 차이날 때만 seek
+
+  function scrub() {
+    ticking = false;
+
+    const scrollY     = window.scrollY;
+    const secTop      = section.offsetTop;
+    const scrubHeight = section.offsetHeight - window.innerHeight;
+
+    if (isReady && duration && scrubHeight > 0) {
+      const rawProgress = (scrollY - secTop) / scrubHeight;
+      const progress    = Math.max(0, Math.min(rawProgress, 1));
+      const targetTime  = duration * progress;
+
+      if (Math.abs(targetTime - lastTime) > SEEK_THRESHOLD) {
+        lastTime = targetTime;
+
+        // seeking 중이면 강제 seek 스킵 — 디코딩 충돌 방지
+        if (!video.seeking) {
+          video.currentTime = targetTime;
+        }
+        updateTexts(targetTime);
+      }
+
+      if (progress >= 1 && !videoEnded) {
+        videoEnded = true;
+        video.currentTime = duration;
+      }
+
+      hint.style.opacity = Math.max(0, 1 - progress * 6);
+    }
+
+    const totalH = document.body.scrollHeight - window.innerHeight;
+    bar.style.width = totalH > 0 ? (window.scrollY / totalH * 100) + '%' : '0%';
+  }
+
+  // ── rAF throttle ──
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(scrub);
+      ticking = true;
+    }
+  }, { passive: true });
+
+  scrub();
+</script>
+
+</body>
+</html>
